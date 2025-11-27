@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Connexion</h1>
+
+    <form action="/login" method="POST">
+        <label>Nom d'utilisateur :</label>
+        <input type="text" name="username" required>
+
+        <label>Mot de passe :</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Se connecter</button>
+    </form>
+
+    <p>Pas de compte ? <a href="/register">Créer un compte</a></p>
+</body>
+</html>
