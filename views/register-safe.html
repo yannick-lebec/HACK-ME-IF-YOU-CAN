@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Créer un compte</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+
+  <body class="game-body">
+    <div class="game-container">
+      <h1>Créer un compte</h1>
+      <p class="subtitle">
+        Inscris-toi pour sauvegarder ta progression et ton score.
+      </p>
+      <p id="register-error" class="error-message" style="display: none"></p>
+
+      <form action="/register-safe" method="POST" class="login-form">
+        <input
+          type="text"
+          name="username"
+          placeholder="Nom d'utilisateur"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Mot de passe"
+          required
+        />
+        <button type="submit" class="btn">Créer mon compte</button>
+      </form>
+
+      <p style="margin-top: 16px">
+        <a href="/game" class="btn btn-secondary">Retour au jeu</a>
+      </p>
+    </div>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get("error");
+      const errorEl = document.getElementById("register-error");
+
+      if (error && errorEl) {
+        if (error === "weak") {
+          errorEl.textContent =
+            "❌ Mot de passe trop faible : 8 caractères, 1 majuscule, 1 caractère spécial minimum.";
+        } else if (error === "exists") {
+          errorEl.textContent = "❌ Ce nom d'utilisateur existe déjà.";
+        } else if (error === "server") {
+          errorEl.textContent = "❌ Erreur serveur. Réessaie plus tard.";
+        }
+
+        errorEl.style.display = "block";
+
+        // Nettoyer l'URL pour enlever ?error=xxx
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    </script>
+  </body>
+</html>

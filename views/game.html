@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hack Me If You Can - Levels</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="game-body">
+    <div class="game-container">
+      <h1>Hack Me If You Can 😈</h1>
+      <p class="subtitle">
+        Bienvenue dans ton mini-CTF web. Connecte-toi pour garder ton score.
+      </p>
+
+      <div class="login-box" id="login-box">
+        <h2>Connexion joueur</h2>
+        <form action="/login-safe" method="POST" class="login-form">
+          <input
+            type="text"
+            name="username"
+            placeholder="Nom d'utilisateur"
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Mot de passe"
+            required
+          />
+          <button type="submit" class="btn">Se connecter</button>
+        </form>
+
+        <p id="login-error" class="error-message" style="display: none"></p>
+
+        <p class="hint">
+          Pas encore de compte ?
+          <a href="/register-safe">Créer un compte</a>
+        </p>
+      </div>
+
+      <div class="login-box" id="welcome-box" style="display: none">
+        <h2 id="welcome-text"></h2>
+        <form action="/logout" method="POST">
+          <button type="submit" class="btn btn-secondary">Déconnexion</button>
+        </form>
+      </div>
+
+      <p class="score">Score : <span id="score-value">0</span> / 10 niveaux</p>
+
+      <form action="/reset-game" method="POST" class="reset-form">
+        <button type="submit" class="btn btn-secondary">
+          Recommencer le jeu 🔁
+        </button>
+      </form>
+
+      <div class="levels">
+        <div class="level-card">
+          <h2>Level 1 – SQL Injection Login</h2>
+          <p>Réussis à te connecter sans connaître le mot de passe.</p>
+
+          <div class="level-actions">
+            <a href="/level1" class="btn">Jouer ce niveau</a>
+
+            <form
+              action="/check-flag-level1"
+              method="POST"
+              class="flag-form"
+              id="level1-flag-form"
+            >
+              <input
+                type="text"
+                name="flag"
+                placeholder="Entre le flag ici"
+                required
+                class="flag-input"
+              />
+              <button type="submit" class="btn btn-secondary">Valider</button>
+              <span id="level1-result" class="flag-result"></span>
+            </form>
+          </div>
+        </div>
+
+        <!-- Plus tard on ajoutera les autres niveaux -->
+        <!-- Level 2, XSS, IDOR, etc. -->
+      </div>
+    </div>
+    <script>
+      // 0) Lire les paramètres de l'URL pour voir s'il y a une erreur de login
+      const params = new URLSearchParams(window.location.search);
+      const loginError = params.get("loginError");
+      const loginErrorEl = document.getElementById("login-error");
+
+      if (loginError === "1" && loginErrorEl) {
+        loginErrorEl.textContent = "❌ Identifiants incorrects";
+        loginErrorEl.style.display = "block";
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+
+      // 1) Au chargement : récupérer score + niveaux complétés
+      fetch("/score")
+        .then((res) => {
+          if (res.status === 401 || res.status === 403) {
+            return null;
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (!data) return;
+
+          const scoreSpan = document.getElementById("score-value");
+          const loginBox = document.getElementById("login-box");
+          const welcomeBox = document.getElementById("welcome-box");
+          const welcomeText = document.getElementById("welcome-text");
+          const resultSpan = document.getElementById("level1-result");
+
+          if (scoreSpan) {
+            scoreSpan.textContent = data.score;
+          }
+
+          if (data.username && loginBox && welcomeBox && welcomeText) {
+            loginBox.style.display = "none";
+            welcomeBox.style.display = "block";
+            welcomeText.textContent = `Bonjour, ${data.username} 👋`;
+          }
+
+          if (
+            data.completedLevels &&
+            data.completedLevels.includes(1) &&
+            resultSpan
+          ) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+          }
+        })
+        .catch((err) => {
+          console.error("Erreur score :", err);
+        });
+
+      // ... (le reste de ton script pour le flag level 1)
+    </script>
+    <script>
+      document
+        .getElementById("level1-flag-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const form = e.target;
+          const flagInput = form.flag.value;
+          const resultSpan = document.getElementById("level1-result");
+          const scoreSpan = document.getElementById("score-value");
+
+          const res = await fetch("/check-flag-level1", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `flag=${encodeURIComponent(flagInput)}`,
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+
+            // 🔥 On recharge les infos de score depuis le serveur
+            const scoreRes = await fetch("/score");
+            if (scoreRes.ok) {
+              const scoreData = await scoreRes.json();
+              if (scoreSpan) {
+                scoreSpan.textContent = scoreData.score;
+              }
+            }
+          } else {
+            resultSpan.textContent = "Mauvais flag ❌";
+            resultSpan.style.color = "#ef4444";
+          }
+        });
+    </script>
+  </body>
+</html>
