@@ -1,24 +1,131 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Login</title>
-</head>
-<body>
-    <h1>Connexion</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Level 1 – Login vulnérable</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+    <!-- Canvas pour la pluie de code Matrix -->
+    <canvas id="matrix-canvas"></canvas>
 
-    <form action="/login" method="POST">
-        <label>Nom d'utilisateur :</label>
-        <input type="text" name="username" required>
+    <!-- Contenu centré -->
+    <div class="matrix-content">
+      <h1>Level 1 – Login vulnérable</h1>
+      <p class="subtitle">
+        Objectif : connecte-toi
+        <strong>sans connaître le mot de passe</strong>.<br />
+        Utilise une injection SQL qui renvoie <strong>true</strong>, par exemple
+        une égalité 😈.
+      </p>
 
-        <label>Mot de passe :</label>
-        <input type="password" name="password" required>
+      <p id="login-error" class="error-message" style="display: none"></p>
+      <p id="login-hint" class="hint-message" style="display: none"></p>
 
-        <button type="submit">Se connecter</button>
-    </form>
+      <h2>Connexion (vulnérable)</h2>
+      <form action="/login" method="POST" class="login-form">
+        <input
+          type="text"
+          name="username"
+          placeholder="Nom d'utilisateur"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Mot de passe"
+          required
+        />
+        <button type="submit" class="btn btn-secondary">
+          Se connecter (vulnérable)
+        </button>
+      </form>
 
-    <p>Pas de compte ? <a href="/register">Créer un compte</a></p>
+      <p style="margin-top: 20px">
+        <a href="/game" class="btn btn-secondary">⬅️ Retour au jeu</a>
+      </p>
+    </div>
 
+    <!-- Script pour gérer les erreurs + indice -->
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get("error");
+      const attempts = params.get("attempts");
+      const hint = params.get("hint");
 
-</body>
+      const errorEl = document.getElementById("login-error");
+      const hintEl = document.getElementById("login-hint");
+
+      // Message d'erreur si login échoué
+      if (error === "1" && errorEl) {
+        const countText = attempts ? ` (Essais : ${attempts})` : "";
+        errorEl.textContent = "❌ Identifiants incorrects" + countText;
+        errorEl.style.display = "block";
+      }
+
+      // Indice après 5 essais ratés
+      if (hint === "1" && hintEl) {
+        hintEl.textContent =
+          "💡 Indice : essaie de 'casser' la requête SQL avec une apostrophe et un OR, par exemple : toto' OR '1'='1";
+        hintEl.style.display = "block";
+      }
+
+      // Nettoyer l'URL pour enlever ?error=...&attempts=...&hint=...
+      if (error || attempts || hint) {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    </script>
+
+    <!-- Script pour le fond Matrix (canvas) -->
+    <script>
+      const canvas = document.getElementById("matrix-canvas");
+      const ctx = canvas.getContext("2d");
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      resizeCanvas();
+
+      const letters =
+        "01あいうえおアイウエオネオデータハック$#@!%&<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const fontSize = 16;
+      let columns = Math.floor(canvas.width / fontSize);
+
+      // Une "goutte" par colonne
+      let drops = Array(columns).fill(0);
+
+      function draw() {
+        // Fond semi-transparent pour l'effet de traînée
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#00cc33"; // vert Matrix
+        ctx.font = fontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = letters[Math.floor(Math.random() * letters.length)];
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          // Quand la goutte sort de l'écran, on la reset aléatoirement
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+
+          drops[i]++;
+        }
+      }
+
+      setInterval(draw, 75); // ~30 FPS
+
+      // Adapter le canvas quand la fenêtre change de taille
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(0);
+      });
+    </script>
+  </body>
 </html>

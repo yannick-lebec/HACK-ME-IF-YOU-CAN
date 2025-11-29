@@ -79,70 +79,128 @@
             </form>
           </div>
         </div>
+        <div class="level-card">
+          <h2>Level 2 – XSS (Reflected)</h2>
+          <p>Exploit une vulnérabilité XSS avec le paramètre <code>q</code>.</p>
+
+          <div class="level-actions">
+            <a href="/level2" class="btn">Jouer ce niveau</a>
+
+            <form
+              action="/check-flag-level2"
+              method="POST"
+              class="flag-form"
+              id="level2-flag-form"
+            >
+              <input
+                type="text"
+                name="flag"
+                placeholder="Entre le flag ici"
+                required
+                class="flag-input"
+              />
+              <button type="submit" class="btn btn-secondary">Valider</button>
+              <span id="level2-result" class="flag-result"></span>
+            </form>
+          </div>
+        </div>
+        <!-- LEVEL 3 -->
+        <div class="level-card">
+          <h2>Level 3 – XSS (Stocké)</h2>
+          <p>
+            Objectif : exploite une <strong>XSS stockée</strong> dans un mur de
+            commentaires.<br> Ton script doit s'exécuter à chaque fois que la page
+            se charge.
+          </p>
+
+          <div class="level-actions">
+            <a href="/level3" class="btn">Jouer ce niveau</a>
+
+            <form
+              action="/check-flag-level3"
+              method="POST"
+              class="flag-form"
+              id="level3-flag-form"
+            >
+              <input
+                type="text"
+                name="flag"
+                placeholder="Entre le flag ici"
+                required
+                class="flag-input"
+              />
+              <button type="submit" class="btn btn-secondary">Valider</button>
+              <span id="level3-result" class="flag-result"></span>
+            </form>
+          </div>
+        </div>
 
         <!-- Plus tard on ajoutera les autres niveaux -->
         <!-- Level 2, XSS, IDOR, etc. -->
       </div>
     </div>
     <script>
-      // 0) Lire les paramètres de l'URL pour voir s'il y a une erreur de login
-      const params = new URLSearchParams(window.location.search);
-      const loginError = params.get("loginError");
-      const loginErrorEl = document.getElementById("login-error");
-
-      if (loginError === "1" && loginErrorEl) {
-        loginErrorEl.textContent = "❌ Identifiants incorrects";
-        loginErrorEl.style.display = "block";
-        const cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, "", cleanUrl);
-      }
-
-      // 1) Au chargement : récupérer score + niveaux complétés
+      // 1) Récupérer score + niveaux complétés
       fetch("/score")
         .then((res) => {
           if (res.status === 401 || res.status === 403) {
-            return null;
+            return null; // pas connecté
           }
           return res.json();
         })
         .then((data) => {
           if (!data) return;
 
+          // Score affiché
           const scoreSpan = document.getElementById("score-value");
+          if (scoreSpan) scoreSpan.textContent = data.score;
+
+          // Masquer connexion & afficher profil
           const loginBox = document.getElementById("login-box");
           const welcomeBox = document.getElementById("welcome-box");
           const welcomeText = document.getElementById("welcome-text");
-          const resultSpan = document.getElementById("level1-result");
 
-          if (scoreSpan) {
-            scoreSpan.textContent = data.score;
+          if (data.username) {
+            if (loginBox) loginBox.style.display = "none";
+            if (welcomeBox) welcomeBox.style.display = "block";
+            if (welcomeText)
+              welcomeText.textContent = `Bonjour, ${data.username} 👋`;
           }
 
-          if (data.username && loginBox && welcomeBox && welcomeText) {
-            loginBox.style.display = "none";
-            welcomeBox.style.display = "block";
-            welcomeText.textContent = `Bonjour, ${data.username} 👋`;
+          // === RESTAURATION DES FLAGS LEVELS ===
+
+          // Level 1
+          if (data.completedLevels.includes(1)) {
+            const result1 = document.getElementById("level1-result");
+            if (result1) {
+              result1.textContent = "Défi terminé ✔️";
+              result1.style.color = "#22c55e";
+            }
           }
 
-          if (
-            data.completedLevels &&
-            data.completedLevels.includes(1) &&
-            resultSpan
-          ) {
-            resultSpan.textContent = "Défi terminé ✔️";
-            resultSpan.style.color = "#22c55e";
+          // Level 2
+          if (data.completedLevels.includes(2)) {
+            const result2 = document.getElementById("level2-result");
+            if (result2) {
+              result2.textContent = "Défi terminé ✔️";
+              result2.style.color = "#22c55e";
+            }
+          }
+          // Level 3
+          if (data.completedLevels.includes(3)) {
+            const result3 = document.getElementById("level3-result");
+            if (result3) {
+              result3.textContent = "Défi terminé ✔️";
+              result3.style.color = "#22c55e";
+            }
           }
         })
-        .catch((err) => {
-          console.error("Erreur score :", err);
-        });
+        .catch((err) => console.error("Erreur score :", err));
 
-      // ... (le reste de ton script pour le flag level 1)
-    </script>
-    <script>
-      document
-        .getElementById("level1-flag-form")
-        .addEventListener("submit", async (e) => {
+      // === LEVEL 1 FLAG ===
+      const level1Form = document.getElementById("level1-flag-form");
+      if (level1Form) {
+        level1Form.addEventListener("submit", async (e) => {
           e.preventDefault();
 
           const form = e.target;
@@ -162,19 +220,88 @@
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
 
-            // 🔥 On recharge les infos de score depuis le serveur
+            // Mise à jour du score
             const scoreRes = await fetch("/score");
-            if (scoreRes.ok) {
+            if (scoreRes.ok && scoreSpan) {
               const scoreData = await scoreRes.json();
-              if (scoreSpan) {
-                scoreSpan.textContent = scoreData.score;
-              }
+              scoreSpan.textContent = scoreData.score;
             }
           } else {
             resultSpan.textContent = "Mauvais flag ❌";
             resultSpan.style.color = "#ef4444";
           }
         });
+      }
+
+      // === LEVEL 2 FLAG ===
+      const level2Form = document.getElementById("level2-flag-form");
+      if (level2Form) {
+        level2Form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const form = e.target;
+          const flagInput = form.flag.value;
+          const resultSpan = document.getElementById("level2-result");
+          const scoreSpan = document.getElementById("score-value");
+
+          const res = await fetch("/check-flag-level2", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `flag=${encodeURIComponent(flagInput)}`,
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+
+            // Mise à jour du score
+            const scoreRes = await fetch("/score");
+            if (scoreRes.ok && scoreSpan) {
+              const scoreData = await scoreRes.json();
+              scoreSpan.textContent = scoreData.score;
+            }
+          } else {
+            resultSpan.textContent = "Mauvais flag ❌";
+            resultSpan.style.color = "#ef4444";
+          }
+        });
+      }
+      // === LEVEL 3 FLAG ===
+      const level3Form = document.getElementById("level3-flag-form");
+      if (level3Form) {
+        level3Form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const form = e.target;
+          const flagInput = form.flag.value;
+          const resultSpan = document.getElementById("level3-result");
+          const scoreSpan = document.getElementById("score-value");
+
+          const res = await fetch("/check-flag-level3", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `flag=${encodeURIComponent(flagInput)}`,
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+
+            const scoreRes = await fetch("/score");
+            if (scoreRes.ok && scoreSpan) {
+              const scoreData = await scoreRes.json();
+              scoreSpan.textContent = scoreData.score;
+            }
+          } else {
+            resultSpan.textContent = "Mauvais flag ❌";
+            resultSpan.style.color = "#ef4444";
+          }
+        });
+      }
     </script>
   </body>
 </html>

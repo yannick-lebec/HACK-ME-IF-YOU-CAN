@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Level 2 – XSS</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+    <canvas id="matrix-canvas"></canvas>
+
+    <div class="matrix-content">
+      <h1>Level 2 – XSS (Reflected)</h1>
+      <p class="subtitle">
+        Bienvenue sur le niveau XSS.<br />
+        Objectif : exécuter du <strong>JavaScript</strong> dans le navigateur
+        en abusant de la façon dont la page réutilise ton entrée.
+      </p>
+
+      <ol style="max-width: 600px; text-align: left">
+        <li>Ouvre la page suivante : <code>/search-vuln</code>.</li>
+        <li>
+          Entre une valeur normale dans le champ, observe comment elle est
+          réaffichée dans la page.
+        </li>
+        <li>
+          Essaie ensuite d'injecter du code HTML puis du JavaScript
+          <code>&lt;script&gt;...&lt;/script&gt;</code>.
+        </li>
+      </ol>
+
+      <p style="margin-top: 16px">
+        <a href="/search-vuln" class="btn btn-secondary">
+          🚀 Ouvrir le champ vulnérable
+        </a>
+      </p>
+
+      <p style="margin-top: 16px">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au jeu</a>
+      </p>
+    </div>
+
+    <!-- Script Matrix (même que login) -->
+    <script>
+      const canvas = document.getElementById("matrix-canvas");
+      const ctx = canvas.getContext("2d");
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      resizeCanvas();
+
+      const letters =
+        "01あいうえおアイウエオネオデータハック$#@!%&<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const fontSize = 16;
+      let columns = Math.floor(canvas.width / fontSize);
+      let drops = Array(columns).fill(0);
+
+      function draw() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#00cc33";
+        ctx.font = fontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = letters[Math.floor(Math.random() * letters.length)];
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+
+          drops[i]++;
+        }
+      }
+
+      setInterval(draw, 75);
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(0);
+      });
+    </script>
+  </body>
+</html>
