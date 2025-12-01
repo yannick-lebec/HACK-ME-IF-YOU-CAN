@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Level 5 – IDOR</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+    <canvas id="matrix-canvas"></canvas>
+
+    <div class="matrix-content">
+      <h1>Level 5 – IDOR</h1>
+      <p class="subtitle">
+        Objectif : afficher le profil de quelqu’un d’autre que toi en jouant avec
+        un identifiant dans l'URL 👀
+      </p>
+
+      <ol style="text-align:left; max-width:600px;">
+        <li>Connecte-toi avec n'importe quel compte.</li>
+        <li>Va sur <code>/profile-vuln</code>.</li>
+        <li>Observe ton ID dans l’URL.</li>
+        <li>Modifie-le pour tenter d’afficher un autre utilisateur.</li>
+      </ol>
+
+      <p style="margin-top:16px;">
+        <a href="/profile-vuln" class="btn btn-secondary">👤 Ouvrir le profil vulnérable</a>
+      </p>
+
+      <p style="margin-top:16px;">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au jeu</a>
+      </p>
+    </div>
+
+    <script>
+      const canvas=document.getElementById("matrix-canvas");
+      const ctx=canvas.getContext("2d");
+      function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+      resize();
+      const letters="01あいうえおアイウエオABCDE$#@!";
+      let fontSize=16,columns=Math.floor(canvas.width/fontSize),drops=Array(columns).fill(0);
+      function draw(){
+        ctx.fillStyle="rgba(0,0,0,0.15)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle="#00cc33";ctx.font=fontSize+"px monospace";
+        for(let i=0;i<drops.length;i++){
+          const text=letters[Math.random()*letters.length|0];
+          ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+          if(drops[i]*fontSize>canvas.height&&Math.random()>0.975)drops[i]=0;
+          drops[i]++;
+        }
+      }
+      setInterval(draw,75);
+      onresize=()=>{resize();columns=Math.floor(canvas.width/fontSize);drops=Array(columns).fill(0);}
+    </script>
+  </body>
+</html>

@@ -2,37 +2,35 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Level 1 – SQL Injection</title>
+    <title>Level 4 – Broken Access Control</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body class="matrix-body">
-    <!-- Canvas Matrix -->
     <canvas id="matrix-canvas"></canvas>
 
-    <!-- Contenu centré -->
     <div class="matrix-content">
-      <h1>Level 1 – SQL Injection Login</h1>
+      <h1>Level 4 – Broken Access Control</h1>
       <p class="subtitle">
-        Objectif : réussir à te connecter sans connaître le mot de passe 👀<br />
-        Le formulaire de login est vulnérable à une
-        <strong>injection SQL</strong>.
+        Objectif : accéder à une zone <strong>admin</strong> alors que tu n'es
+        pas administrateur.<br />
+        Le contrôle d'accès est mal codé. À toi de l'abuser 😈
       </p>
 
       <ol style="max-width: 600px; text-align: left">
-        <li>Ouvre le formulaire de login vulnérable.</li>
+        <li>Assure-toi d'être connecté avec n'importe quel compte.</li>
         <li>
-          Essaie d'abord des identifiants normaux, observe le message
+          Va sur la page <code>/admin-panel</code> et observe le message
           d'erreur.
         </li>
         <li>
-          Ensuite, joue avec les apostrophes <code>'</code> et les opérateurs
-          <code>OR</code> pour manipuler la requête SQL.
+          Essaie de jouer avec les paramètres de l'URL (query string) pour faire
+          croire au serveur que tu es admin.
         </li>
       </ol>
 
       <p style="margin-top: 16px">
-        <a href="/login" class="btn btn-secondary">
-          🚪 Aller au login vulnérable
+        <a href="/admin-panel" class="btn btn-secondary">
+          🚪 Ouvrir le faux panneau admin
         </a>
       </p>
 

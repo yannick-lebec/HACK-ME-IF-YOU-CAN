@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Explication – Level 1 (SQL Injection)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+
+    <div
+      class="matrix-content"
+      style="align-items:flex-start; text-align:left; max-width:800px;"
+    >
+      <h1>Level 1 – SQL Injection Login</h1>
+      <p class="subtitle">
+        Ce niveau montre ce qu'il ne faut <strong>jamais</strong> faire avec des
+        identifiants utilisateurs.
+      </p>
+
+      <h2>⚠️ Ce qui était vulnérable</h2>
+      <p>
+        Dans le code du niveau 1, la requête SQL était construite ainsi :
+      </p>
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >const query = `SELECT * FROM users WHERE username='${username}' AND password='${password}'`;</pre>
+
+      <p>
+        On concatène directement les valeurs envoyées par l'utilisateur dans la
+        requête SQL. Résultat : un attaquant peut injecter du SQL, par exemple :
+      </p>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >username = toto' OR '1'='1
+password = peu importe</pre>
+
+      <p>
+        La requête devient alors toujours vraie, ce qui permet de se connecter
+        sans connaître le vrai mot de passe.
+      </p>
+
+      <h2>🔍 Comment tu as exploité la vulnérabilité</h2>
+      <ul>
+        <li>Tu as essayé des identifiants normaux → échec.</li>
+        <li>Tu as injecté une apostrophe <code>'</code> pour “casser” la requête.</li>
+        <li>
+          Puis tu as ajouté une condition toujours vraie comme
+          <code>OR '1'='1'</code>.
+        </li>
+      </ul>
+
+      <h2>✅ Ce qu'il faudrait faire en vrai</h2>
+      <ul>
+        <li>Utiliser des requêtes <strong>préparées / paramétrées</strong>.</li>
+        <li>
+          Ne <strong>jamais concaténer</strong> directement les données
+          utilisateur dans le SQL.
+        </li>
+        <li>Stocker les mots de passe <strong>hachés</strong> (bcrypt, argon2...).</li>
+      </ul>
+
+      <p>Exemple correct :</p>
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >const [rows] = await db.execute(
+  "SELECT id, username, password FROM users WHERE username = ?",
+  [username]
+);</pre>
+
+      <p style="margin-top:20px;">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au hub</a>
+      </p>
+    </div>
+
+    
+  </body>
+</html>

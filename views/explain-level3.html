@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Explication – Level 3 (XSS Stockée)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+
+    <div
+      class="matrix-content"
+      style="align-items:flex-start; text-align:left; max-width:800px;"
+    >
+      <h1>Level 3 – XSS (Stocké)</h1>
+      <p class="subtitle">
+        Ici, la XSS n'est pas seulement reflétée : elle est stockée en base, et
+        rejouée à chaque chargement de la page.
+      </p>
+
+      <h2>⚠️ Ce qui était vulnérable</h2>
+      <p>Côté serveur, les commentaires étaient insérés tel quel :</p>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >await db.execute(
+  "INSERT INTO comments (user_id, content) VALUES (?, ?)",
+  [userId, content]
+);</pre>
+
+      <p>Puis ré-affichés sans échappement :</p>
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >${row.content}</pre>
+
+      <p>
+        Donc si quelqu'un poste un commentaire contenant une balise
+        <code>&lt;script&gt;</code>, ce script sera exécuté pour
+        <strong>tous</strong> les utilisateurs qui visitent la page.
+      </p>
+
+      <h2>🔍 Comment tu as exploité la vulnérabilité</h2>
+      <ul>
+        <li>Tu as écrit un commentaire “normal” pour voir le comportement.</li>
+        <li>
+          Puis tu as posté un payload du type :
+          <code>&lt;script&gt;...&lt;/script&gt;</code>.
+        </li>
+        <li>
+          Ton script s'exécutait à chaque fois que tu revenais sur
+          <code>/comments-vuln</code>.
+        </li>
+        <li>
+          Le flag était caché dans un attribut
+          <code>data-flag</code> :
+        </li>
+      </ul>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >&lt;div id="secret-flag" data-flag="FLAG{...}" style="display:none;"&gt;&lt;/div&gt;</pre>
+
+      <p>
+        Tu as pu le lire depuis ton script avec :
+        <code>document.getElementById('secret-flag').dataset.flag</code>.
+      </p>
+
+      <h2>✅ Ce qu'il faudrait faire en vrai</h2>
+      <ul>
+        <li>Échapper toute sortie utilisateur affichée dans le HTML.</li>
+        <li>Sanitiser les données au moment de l'affichage.</li>
+        <li>
+          Dans certains cas, filtrer totalement certaines balises
+          (<code>&lt;script&gt;</code>, <code>on*</code>, etc.).
+        </li>
+      </ul>
+
+      <p style="margin-top:20px;">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au hub</a>
+      </p>
+    </div>
+
+  </body>
+</html>

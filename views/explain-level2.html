@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Explication – Level 2 (XSS Reflected)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+    
+    <div
+      class="matrix-content"
+      style="align-items:flex-start; text-align:left; max-width:800px;"
+    >
+      <h1>Level 2 – XSS (Reflected)</h1>
+      <p class="subtitle">
+        Ce niveau montre une faille classique : une entrée utilisateur réaffichée
+        tel quel dans la page.
+      </p>
+
+      <h2>⚠️ Ce qui était vulnérable</h2>
+      <p>Dans la page de recherche, le code faisait ceci :</p>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >&lt;p&gt;
+  <!-- ⚠️ Injection directe, XSS possible -->
+  ${q}
+&lt;/p&gt;</pre>
+
+      <p>
+        Le paramètre <code>q</code> provenant de l'URL (GET) était injecté
+        directement dans le HTML, sans échappement ni filtrage.
+      </p>
+
+      <h2>🔍 Comment tu as exploité la vulnérabilité</h2>
+      <ul>
+        <li>Tu as testé avec du texte normal → rien de spécial.</li>
+        <li>
+          Puis tu as essayé d'injecter du HTML/JS avec une balise :
+          <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code>.
+        </li>
+        <li>
+          Le navigateur a interprété ce script car il a été inclus dans le DOM
+          sans protection.
+        </li>
+      </ul>
+
+      <h2>✅ Ce qu'il faudrait faire en vrai</h2>
+      <ul>
+        <li>Échapper systématiquement les valeurs avant de les injecter dans le HTML.</li>
+        <li>Utiliser des templates ou des fonctions qui protègent par défaut.</li>
+        <li>
+          Éviter d'injecter directement des chaînes dans
+          <code>innerHTML</code>, et préférer <code>textContent</code>.
+        </li>
+      </ul>
+
+      <p>Exemple côté serveur :</p>
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >// Par exemple : encoder les caractères spéciaux (&, <, >, ", ')
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}</pre>
+
+      <p style="margin-top:20px;">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au hub</a>
+      </p>
+    </div>
+
+  </body>
+</html>

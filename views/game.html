@@ -12,6 +12,7 @@
         Bienvenue dans ton mini-CTF web. Connecte-toi pour garder ton score.
       </p>
 
+      <!-- Box de connexion -->
       <div class="login-box" id="login-box">
         <h2>Connexion joueur</h2>
         <form action="/login-safe" method="POST" class="login-form">
@@ -38,6 +39,7 @@
         </p>
       </div>
 
+      <!-- Box bienvenue -->
       <div class="login-box" id="welcome-box" style="display: none">
         <h2 id="welcome-text"></h2>
         <form action="/logout" method="POST">
@@ -45,21 +47,29 @@
         </form>
       </div>
 
-      <p class="score">Score : <span id="score-value">0</span> / 10 niveaux</p>
+      <!-- Score -->
+      <p class="score">Score : <span id="score-value">0</span> / 5 niveaux</p>
 
+      <!-- Reset jeu -->
       <form action="/reset-game" method="POST" class="reset-form">
         <button type="submit" class="btn btn-secondary">
           Recommencer le jeu 🔁
         </button>
       </form>
 
+      <!-- Niveaux -->
       <div class="levels">
+        <!-- LEVEL 1 -->
         <div class="level-card">
           <h2>Level 1 – SQL Injection Login</h2>
           <p>Réussis à te connecter sans connaître le mot de passe.</p>
 
           <div class="level-actions">
             <a href="/level1" class="btn">Jouer ce niveau</a>
+
+            <a href="/explain/level1" class="btn btn-secondary">
+              🧠 Explication
+            </a>
 
             <form
               action="/check-flag-level1"
@@ -79,12 +89,21 @@
             </form>
           </div>
         </div>
+
+        <!-- LEVEL 2 -->
         <div class="level-card">
           <h2>Level 2 – XSS (Reflected)</h2>
-          <p>Exploit une vulnérabilité XSS avec le paramètre <code>q</code>.</p>
+          <p>
+            Exploit une vulnérabilité <strong>XSS réfléchie</strong> avec le
+            paramètre <code>q</code>.
+          </p>
 
           <div class="level-actions">
             <a href="/level2" class="btn">Jouer ce niveau</a>
+
+            <a href="/explain/level2" class="btn btn-secondary">
+              🧠 Explication
+            </a>
 
             <form
               action="/check-flag-level2"
@@ -104,17 +123,22 @@
             </form>
           </div>
         </div>
+
         <!-- LEVEL 3 -->
         <div class="level-card">
           <h2>Level 3 – XSS (Stocké)</h2>
           <p>
             Objectif : exploite une <strong>XSS stockée</strong> dans un mur de
-            commentaires.<br> Ton script doit s'exécuter à chaque fois que la page
-            se charge.
+            commentaires.<br />
+            Ton script doit s'exécuter à chaque fois que la page se charge.
           </p>
 
           <div class="level-actions">
             <a href="/level3" class="btn">Jouer ce niveau</a>
+
+            <a href="/explain/level3" class="btn btn-secondary">
+              🧠 Explication
+            </a>
 
             <form
               action="/check-flag-level3"
@@ -135,11 +159,91 @@
           </div>
         </div>
 
-        <!-- Plus tard on ajoutera les autres niveaux -->
-        <!-- Level 2, XSS, IDOR, etc. -->
+        <!-- LEVEL 4 -->
+        <div class="level-card">
+          <h2>Level 4 – Broken Access Control</h2>
+          <p>
+            Objectif : accéder à une zone <strong>admin</strong> alors que tu
+            n'es pas administrateur. Le contrôle d'accès est mal codé, essaie de
+            le contourner.
+          </p>
+
+          <div class="level-actions">
+            <a href="/level4" class="btn">Jouer ce niveau</a>
+
+            <a href="/explain/level4" class="btn btn-secondary">
+              🧠 Explication
+            </a>
+
+            <form
+              action="/check-flag-level4"
+              method="POST"
+              class="flag-form"
+              id="level4-flag-form"
+            >
+              <input
+                type="text"
+                name="flag"
+                placeholder="Entre le flag ici"
+                required
+                class="flag-input"
+              />
+              <button type="submit" class="btn btn-secondary">Valider</button>
+              <span id="level4-result" class="flag-result"></span>
+            </form>
+          </div>
+        </div>
+
+        <!-- LEVEL 5 -->
+        <div class="level-card">
+          <h2>Level 5 – IDOR</h2>
+          <p>
+            Objectif : afficher le profil de quelqu'un d'autre en modifiant un
+            identifiant dans l'URL (fail très fréquent).
+          </p>
+
+          <div class="level-actions">
+            <a href="/level5" class="btn">Jouer ce niveau</a>
+
+            <a href="/explain/level5" class="btn btn-secondary">
+              🧠 Explication
+            </a>
+
+            <form
+              action="/check-flag-level5"
+              method="POST"
+              class="flag-form"
+              id="level5-flag-form"
+            >
+              <input
+                type="text"
+                name="flag"
+                placeholder="Entre le flag ici"
+                required
+                class="flag-input"
+              />
+              <button type="submit" class="btn btn-secondary">Valider</button>
+              <span id="level5-result" class="flag-result"></span>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
+
     <script>
+      // Gestion message d'erreur de login sécurisé
+      const params = new URLSearchParams(window.location.search);
+      const loginError = params.get("loginError");
+      const loginErrorEl = document.getElementById("login-error");
+
+      if (loginError === "1" && loginErrorEl) {
+        loginErrorEl.textContent = "❌ Identifiants incorrects";
+        loginErrorEl.style.display = "block";
+
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+
       // 1) Récupérer score + niveaux complétés
       fetch("/score")
         .then((res) => {
@@ -186,12 +290,31 @@
               result2.style.color = "#22c55e";
             }
           }
+
           // Level 3
           if (data.completedLevels.includes(3)) {
             const result3 = document.getElementById("level3-result");
             if (result3) {
               result3.textContent = "Défi terminé ✔️";
               result3.style.color = "#22c55e";
+            }
+          }
+
+          // Level 4
+          if (data.completedLevels.includes(4)) {
+            const result4 = document.getElementById("level4-result");
+            if (result4) {
+              result4.textContent = "Défi terminé ✔️";
+              result4.style.color = "#22c55e";
+            }
+          }
+
+          // Level 5
+          if (data.completedLevels.includes(5)) {
+            const result5 = document.getElementById("level5-result");
+            if (result5) {
+              result5.textContent = "Défi terminé ✔️";
+              result5.style.color = "#22c55e";
             }
           }
         })
@@ -220,7 +343,6 @@
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
 
-            // Mise à jour du score
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
               const scoreData = await scoreRes.json();
@@ -256,7 +378,6 @@
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
 
-            // Mise à jour du score
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
               const scoreData = await scoreRes.json();
@@ -268,6 +389,7 @@
           }
         });
       }
+
       // === LEVEL 3 FLAG ===
       const level3Form = document.getElementById("level3-flag-form");
       if (level3Form) {
@@ -280,6 +402,76 @@
           const scoreSpan = document.getElementById("score-value");
 
           const res = await fetch("/check-flag-level3", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `flag=${encodeURIComponent(flagInput)}`,
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+
+            const scoreRes = await fetch("/score");
+            if (scoreRes.ok && scoreSpan) {
+              const scoreData = await scoreRes.json();
+              scoreSpan.textContent = scoreData.score;
+            }
+          } else {
+            resultSpan.textContent = "Mauvais flag ❌";
+            resultSpan.style.color = "#ef4444";
+          }
+        });
+      }
+
+      // === LEVEL 4 FLAG ===
+      const level4Form = document.getElementById("level4-flag-form");
+      if (level4Form) {
+        level4Form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const form = e.target;
+          const flagInput = form.flag.value;
+          const resultSpan = document.getElementById("level4-result");
+          const scoreSpan = document.getElementById("score-value");
+
+          const res = await fetch("/check-flag-level4", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `flag=${encodeURIComponent(flagInput)}`,
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            resultSpan.textContent = "Défi terminé ✔️";
+            resultSpan.style.color = "#22c55e";
+
+            const scoreRes = await fetch("/score");
+            if (scoreRes.ok && scoreSpan) {
+              const scoreData = await scoreRes.json();
+              scoreSpan.textContent = scoreData.score;
+            }
+          } else {
+            resultSpan.textContent = "Mauvais flag ❌";
+            resultSpan.style.color = "#ef4444";
+          }
+        });
+      }
+
+      // === LEVEL 5 FLAG ===
+      const level5Form = document.getElementById("level5-flag-form");
+      if (level5Form) {
+        level5Form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const form = e.target;
+          const flagInput = form.flag.value;
+          const resultSpan = document.getElementById("level5-result");
+          const scoreSpan = document.getElementById("score-value");
+
+          const res = await fetch("/check-flag-level5", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `flag=${encodeURIComponent(flagInput)}`,

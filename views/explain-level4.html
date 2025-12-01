@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Explication – Level 4 (Broken Access Control)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="matrix-body">
+
+    <div
+      class="matrix-content"
+      style="align-items:flex-start; text-align:left; max-width:800px;"
+    >
+      <h1>Level 4 – Broken Access Control</h1>
+      <p class="subtitle">
+        Ici, le problème n'est pas une injection, mais un <strong>contrôle
+        d'accès mal pensé</strong>.
+      </p>
+
+      <h2>⚠️ Ce qui était vulnérable</h2>
+      <p>Dans le code de <code>/admin-panel</code>, il y avait deux checks :</p>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >const isAdminSession = username === "admin";
+const isAdminDebug = req.query.asAdmin === "1";</pre>
+
+      <p>
+        Ensuite, l'accès était accordé si <code>isAdminSession</code> ou
+        <code>isAdminDebug</code> était vrai :
+      </p>
+
+      <pre
+        style="white-space:pre-wrap; background:rgba(15,23,42,0.9); padding:12px; border-radius:8px;"
+      >if (!isAdminSession && !isAdminDebug) {
+  // Accès refusé
+} else {
+  // Accès admin
+}</pre>
+
+      <p>
+        Le paramètre <code>asAdmin=1</code> permettait à n'importe qui de contourner
+        le contrôle d'accès…
+      </p>
+
+      <h2>🔍 Comment tu as exploité la vulnérabilité</h2>
+      <ul>
+        <li>Tu as essayé d'accéder à <code>/admin-panel</code> sans être admin.</li>
+        <li>Tu as vu un message d'accès refusé.</li>
+        <li>
+          Tu as testé un paramètre comme :
+          <code>/admin-panel?asAdmin=1</code>.
+        </li>
+        <li>
+          Le serveur t'a alors donné accès à la “zone admin” et au flag, sans
+          vérifier ton vrai rôle.
+        </li>
+      </ul>
+
+      <h2>✅ Ce qu'il faudrait faire en vrai</h2>
+      <ul>
+        <li>Ne <strong>jamais</strong> se baser sur un paramètre contrôlé par le client pour un rôle.</li>
+        <li>Stocker les droits dans la session ou un token côté serveur.</li>
+        <li>Centraliser la logique d'autorisation (middleware, policy, etc.).</li>
+        <li>Éviter les “backdoors de debug” en prod.</li>
+      </ul>
+
+      <p style="margin-top:20px;">
+        <a href="/game" class="btn btn-secondary">🏠 Retour au hub</a>
+      </p>
+    </div>
+
+    
+  </body>
+</html>
