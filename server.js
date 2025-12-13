@@ -43,8 +43,6 @@ let db;
 async function initDb() {
   try {
     const connectionConfig = {
-      // Noms des variables de Railway (MYSQLHOST, MYSQLUSER, etc.)
-      // + tes noms à toi (MYSQL_HOST, MYSQL_USER, etc.)
       host:
         process.env.MYSQLHOST ||
         process.env.MYSQL_HOST ||
@@ -72,8 +70,40 @@ async function initDb() {
       "✅ Connecté à MySQL sur",
       connectionConfig.host + ":" + connectionConfig.port
     );
+
+    // --- Création automatique des tables si elles n'existent pas ---
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL
+      )
+    `);
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS user_progress (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        level_number INT NOT NULL,
+        UNIQUE KEY uniq_user_level (user_id, level_number),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    console.log("✅ Tables MySQL initialisées (users, comments, user_progress)");
   } catch (err) {
-    console.error("❌ Impossible de se connecter à MySQL :", err.message);
+    console.error("❌ Impossible de se connecter à MySQL ou de créer les tables :", err.message);
     console.error(
       "❌ Le jeu démarre quand même, mais tout ce qui touche à la base ne marchera pas."
     );
