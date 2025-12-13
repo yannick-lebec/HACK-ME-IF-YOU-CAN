@@ -110,7 +110,7 @@ function requireLogin(req, res, next) {
 // ============================================================================
 
 app.get("/", (req, res) => {
-  res.send("Bienvenue sur Hack Me If You Can 😈");
+  res.redirect("/game");
 });
 
 app.get("/test", (req, res) => {
