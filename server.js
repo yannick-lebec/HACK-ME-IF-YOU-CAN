@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    secret: "change-moi-plus-tard", // à changer en prod
+    secret: process.env.SESSION_SECRET || "change-moi-plus-tard", // à changer en prod
     resave: false,
     saveUninitialized: false,
   })
@@ -41,23 +41,54 @@ const TOTAL_LEVELS = 5;
 let db;
 
 async function initDb() {
-  db = await mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "lunaetlaika", // adapte si besoin
-    database: "hackme",
-  });
+  try {
+    const connectionConfig = {
+      // Noms des variables de Railway (MYSQLHOST, MYSQLUSER, etc.)
+      // + tes noms à toi (MYSQL_HOST, MYSQL_USER, etc.)
+      host:
+        process.env.MYSQLHOST ||
+        process.env.MYSQL_HOST ||
+        "localhost",
+      port:
+        process.env.MYSQLPORT ||
+        process.env.MYSQL_PORT ||
+        3306,
+      user:
+        process.env.MYSQLUSER ||
+        process.env.MYSQL_USER ||
+        "root",
+      password:
+        process.env.MYSQLPASSWORD ||
+        process.env.MYSQL_PASSWORD ||
+        "lunaetlaika",
+      database:
+        process.env.MYSQLDATABASE ||
+        process.env.MYSQL_DATABASE ||
+        "hackme",
+    };
 
-  console.log("✅ Connecté à MySQL");
+    db = await mysql.createConnection(connectionConfig);
+    console.log(
+      "✅ Connecté à MySQL sur",
+      connectionConfig.host + ":" + connectionConfig.port
+    );
+  } catch (err) {
+    console.error("❌ Impossible de se connecter à MySQL :", err.message);
+    console.error(
+      "❌ Le jeu démarre quand même, mais tout ce qui touche à la base ne marchera pas."
+    );
+    db = null;
+  }
 }
 
-initDb().catch((err) => console.error(err));
+initDb();
 
-const PORT = 4100;
+const PORT = process.env.PORT || 4100;
 
 // Helper : vérifier si un joueur a déjà complété un niveau
 
 async function hasCompletedLevel(userId, levelNumber) {
+  if (!db) return false; // si pas de DB, on dit juste "non complété"
   const [rows] = await db.execute(
     "SELECT 1 FROM user_progress WHERE user_id = ? AND level_number = ?",
     [userId, levelNumber]
