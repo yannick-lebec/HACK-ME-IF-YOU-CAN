@@ -67,7 +67,7 @@
           <div class="level-actions">
             <a href="/level1" class="btn">Jouer ce niveau</a>
 
-            <a href="/explain/level1" class="btn btn-secondary">
+            <a href="/explain/level1" class="btn btn-secondary" style="display: none;">
               🧠 Explication
             </a>
 
@@ -101,7 +101,7 @@
           <div class="level-actions">
             <a href="/level2" class="btn">Jouer ce niveau</a>
 
-            <a href="/explain/level2" class="btn btn-secondary">
+            <a href="/explain/level2" class="btn btn-secondary" style="display: none;">
               🧠 Explication
             </a>
 
@@ -136,7 +136,7 @@
           <div class="level-actions">
             <a href="/level3" class="btn">Jouer ce niveau</a>
 
-            <a href="/explain/level3" class="btn btn-secondary">
+            <a href="/explain/level3" class="btn btn-secondary" style="display: none;">
               🧠 Explication
             </a>
 
@@ -171,7 +171,7 @@
           <div class="level-actions">
             <a href="/level4" class="btn">Jouer ce niveau</a>
 
-            <a href="/explain/level4" class="btn btn-secondary">
+            <a href="/explain/level4" class="btn btn-secondary" style="display: none;">
               🧠 Explication
             </a>
 
@@ -205,7 +205,7 @@
           <div class="level-actions">
             <a href="/level5" class="btn">Jouer ce niveau</a>
 
-            <a href="/explain/level5" class="btn btn-secondary">
+            <a href="/explain/level5" class="btn btn-secondary" style="display: none;">
               🧠 Explication
             </a>
 
@@ -274,48 +274,68 @@
           // === RESTAURATION DES FLAGS LEVELS ===
 
           // Level 1
+          const explainBtn1 = document.querySelector('a[href="/explain/level1"]');
           if (data.completedLevels.includes(1)) {
             const result1 = document.getElementById("level1-result");
             if (result1) {
               result1.textContent = "Défi terminé ✔️";
               result1.style.color = "#22c55e";
             }
+            if (explainBtn1) explainBtn1.style.display = "inline-block";
+          } else {
+            if (explainBtn1) explainBtn1.style.display = "none";
           }
 
           // Level 2
+          const explainBtn2 = document.querySelector('a[href="/explain/level2"]');
           if (data.completedLevels.includes(2)) {
             const result2 = document.getElementById("level2-result");
             if (result2) {
               result2.textContent = "Défi terminé ✔️";
               result2.style.color = "#22c55e";
             }
+            if (explainBtn2) explainBtn2.style.display = "inline-block";
+          } else {
+            if (explainBtn2) explainBtn2.style.display = "none";
           }
 
           // Level 3
+          const explainBtn3 = document.querySelector('a[href="/explain/level3"]');
           if (data.completedLevels.includes(3)) {
             const result3 = document.getElementById("level3-result");
             if (result3) {
               result3.textContent = "Défi terminé ✔️";
               result3.style.color = "#22c55e";
             }
+            if (explainBtn3) explainBtn3.style.display = "inline-block";
+          } else {
+            if (explainBtn3) explainBtn3.style.display = "none";
           }
 
           // Level 4
+          const explainBtn4 = document.querySelector('a[href="/explain/level4"]');
           if (data.completedLevels.includes(4)) {
             const result4 = document.getElementById("level4-result");
             if (result4) {
               result4.textContent = "Défi terminé ✔️";
               result4.style.color = "#22c55e";
             }
+            if (explainBtn4) explainBtn4.style.display = "inline-block";
+          } else {
+            if (explainBtn4) explainBtn4.style.display = "none";
           }
 
           // Level 5
+          const explainBtn5 = document.querySelector('a[href="/explain/level5"]');
           if (data.completedLevels.includes(5)) {
             const result5 = document.getElementById("level5-result");
             if (result5) {
               result5.textContent = "Défi terminé ✔️";
               result5.style.color = "#22c55e";
             }
+            if (explainBtn5) explainBtn5.style.display = "inline-block";
+          } else {
+            if (explainBtn5) explainBtn5.style.display = "none";
           }
         })
         .catch((err) => console.error("Erreur score :", err));
@@ -342,6 +362,9 @@
           if (data.success) {
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
+
+            const explainBtn1 = document.querySelector('a[href="/explain/level1"]');
+            if (explainBtn1) explainBtn1.style.display = "inline-block";
 
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
@@ -378,6 +401,9 @@
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
 
+            const explainBtn2 = document.querySelector('a[href="/explain/level2"]');
+            if (explainBtn2) explainBtn2.style.display = "inline-block";
+
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
               const scoreData = await scoreRes.json();
@@ -412,6 +438,9 @@
           if (data.success) {
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
+
+            const explainBtn3 = document.querySelector('a[href="/explain/level3"]');
+            if (explainBtn3) explainBtn3.style.display = "inline-block";
 
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
@@ -448,6 +477,9 @@
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
 
+            const explainBtn4 = document.querySelector('a[href="/explain/level4"]');
+            if (explainBtn4) explainBtn4.style.display = "inline-block";
+
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
               const scoreData = await scoreRes.json();
@@ -482,6 +514,9 @@
           if (data.success) {
             resultSpan.textContent = "Défi terminé ✔️";
             resultSpan.style.color = "#22c55e";
+
+            const explainBtn5 = document.querySelector('a[href="/explain/level5"]');
+            if (explainBtn5) explainBtn5.style.display = "inline-block";
 
             const scoreRes = await fetch("/score");
             if (scoreRes.ok && scoreSpan) {
