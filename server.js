@@ -2,6 +2,8 @@ const mysql = require("mysql2/promise");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
+const fs = require("fs");
+const path = require("path");
 
 console.log(">>> SERVER.JS HACK-ME 4100 LANCÉ <<<");
 
@@ -169,9 +171,45 @@ app.get("/level1", requireLogin, (req, res) => {
   res.sendFile(__dirname + "/views/level1.html");
 });
 
-app.get("/login", (req, res) => {
+app.get("/login", async (req, res) => {
   console.log(">>> ROUTE /login APPELEE <<<");
-  res.sendFile(__dirname + "/views/login.html");
+
+  // Lire le fichier HTML
+  const loginHtmlPath = path.join(__dirname, "/views/login.html");
+  let htmlContent = fs.readFileSync(loginHtmlPath, "utf8");
+
+  // Vérifier si l'utilisateur a complété le level 1
+  let showFlag = false;
+  if (req.session.userId) {
+    try {
+      showFlag = await hasCompletedLevel(req.session.userId, 1);
+      console.log(`>>> User ${req.session.userId} - Level 1 complété: ${showFlag}`);
+    } catch (err) {
+      console.error("Erreur lors de la vérification du level 1:", err);
+    }
+  } else {
+    console.log(">>> Pas d'utilisateur connecté sur /login");
+  }
+
+  // Ajouter le flag dans la page seulement si le level 1 est complété
+  if (showFlag) {
+    const flagSection = `
+      <div style="margin-top: 24px; padding: 16px; background: rgba(0, 204, 51, 0.1); border: 2px solid #00cc33; border-radius: 12px;">
+        <h2 style="color: #00cc33; margin-top: 0;">🏴 Flag Level 1</h2>
+        <p style="font-size: 1.1rem; font-family: monospace; word-break: break-all;">
+          <strong>${LEVEL1_FLAG}</strong>
+        </p>
+      </div>
+    `;
+
+    // Insérer le flag après le formulaire de connexion
+    htmlContent = htmlContent.replace(
+      "</form>",
+      "</form>" + flagSection
+    );
+  }
+
+  res.send(htmlContent);
 });
 
 // Login vulnérable (SQLi)
@@ -183,15 +221,71 @@ app.post("/login", async (req, res) => {
     const [rows] = await db.execute(query);
 
     if (rows.length > 0) {
+      // SQLi / login réussi
       req.session.level1Attempts = 0;
 
+      // On affiche le flag directement (style CTF)
       return res.send(`
-        <h1>🎉 BRAVO !</h1>
-        <p>Tu as réussi à te connecter sur le login vulnérable.<br> copie et colle le drapeau dans la page game.</p>
-        <p><strong>${LEVEL1_FLAG}</strong></p>
-        <a href="/game">⬅️ Retour au jeu</a>
+        <!DOCTYPE html>
+        <html lang="fr">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Level 1 – Succès</title>
+            <link rel="stylesheet" href="/style.css" />
+          </head>
+          <body class="matrix-body">
+            <canvas id="matrix-canvas"></canvas>
+            <div class="matrix-content">
+              <h1>🎉 Bravo !</h1>
+              <p>Tu as réussi à bypasser le login vulnérable via une injection SQL.</p>
+              <p>Voici ton flag du Level 1 :</p>
+              <p style="font-family: monospace; font-size: 1.2rem;">
+                <strong>${LEVEL1_FLAG}</strong>
+              </p>
+              <p style="margin-top:16px;">
+                Retourne sur la page <a href="/game" class="btn btn-secondary">🏠 Hub du jeu</a>
+                pour coller ce flag et valider le niveau.
+              </p>
+            </div>
+
+            <script>
+              const canvas = document.getElementById("matrix-canvas");
+              const ctx = canvas.getContext("2d");
+              function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+              }
+              resizeCanvas();
+              const letters = "01あいうえおアイウエオネオデータハック$#@!%&<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+              const fontSize = 16;
+              let columns = Math.floor(canvas.width / fontSize);
+              let drops = Array(columns).fill(0);
+              function draw() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#00cc33";
+                ctx.font = fontSize + "px monospace";
+                for (let i = 0; i < drops.length; i++) {
+                  const text = letters[Math.floor(Math.random() * letters.length)];
+                  ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                  if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                  }
+                  drops[i]++;
+                }
+              }
+              setInterval(draw, 75);
+              window.addEventListener("resize", () => {
+                resizeCanvas();
+                columns = Math.floor(canvas.width / fontSize);
+                drops = Array(columns).fill(0);
+              });
+            </script>
+          </body>
+        </html>
       `);
     } else {
+      // Mauvais login
       if (!req.session.level1Attempts) {
         req.session.level1Attempts = 0;
       }
@@ -200,7 +294,7 @@ app.post("/login", async (req, res) => {
       const attempts = req.session.level1Attempts;
       let redirectUrl = `/login?error=1&attempts=${attempts}`;
 
-      if (attempts >= 5) {
+      if (attempts >= 3) {
         redirectUrl += "&hint=1";
       }
 
@@ -236,6 +330,8 @@ app.post("/check-flag-level1", requireLogin, async (req, res) => {
       "INSERT IGNORE INTO user_progress (user_id, level_number) VALUES (?, ?)",
       [userId, 1]
     );
+
+    console.log(`>>> Level 1 complété pour user ${userId}`);
 
     return res.json({
       success: true,
@@ -309,7 +405,7 @@ app.get("/search-vuln", (req, res) => {
     : "";
 
   let hintBlock = "";
-  if (!hasScript && attempts >= 5) {
+  if (!hasScript && attempts >= 3) {
     hintBlock = `
       <p style="margin-top:12px; color:#eab308; font-size:0.9rem;">
         💡 Astuce : essaie d'injecter une balise
@@ -324,6 +420,7 @@ app.get("/search-vuln", (req, res) => {
     <html lang="fr">
       <head>
         <meta charset="UTF-8" />
+         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Recherche vulnérable – Level 2</title>
         <link rel="stylesheet" href="/style.css" />
       </head>
@@ -337,7 +434,7 @@ app.get("/search-vuln", (req, res) => {
             en jouant avec le paramètre <code>q</code> 😈
           </p>
 
-          <form class="login-form" method="GET" action="/search-vuln">
+          <form class="search-form" method="GET" action="/search-vuln">
             <input
               type="text"
               name="q"
@@ -487,14 +584,39 @@ app.get("/comments-vuln", requireLogin, async (req, res) => {
   }
 
   try {
+    // On récupère UNIQUEMENT le dernier commentaire
     const [rows] = await db.execute(
       "SELECT c.content, c.created_at, u.username FROM comments c JOIN users u ON c.user_id = u.id ORDER BY c.created_at DESC LIMIT 1"
     );
 
+    const lastComment = rows[0] || null;
+
+    // Est-ce que le dernier commentaire contient une balise <script ?
+    let containsScript = false;
+    if (lastComment && typeof lastComment.content === "string") {
+      containsScript = lastComment.content.toLowerCase().includes("<script");
+    }
+
+    // Gestion des essais / indice
+    if (!containsScript && lastComment) {
+      req.session.level3Attempts += 1;
+    }
+
+    let hintBlock = "";
+    if (!containsScript && req.session.level3Attempts >= 3) {
+      hintBlock = `
+        <p style="margin-top:12px; color:#eab308; font-size:0.9rem;">
+          💡 Indice : essaie d'injecter une balise
+          <code>&lt;script&gt;...&lt;/script&gt;</code>
+          dans ton commentaire pour voir ce qui se passe 😈
+        </p>
+      `;
+    }
+
     const commentsHtml = rows
       .map(
         (row) => `
-        <div style="margin-bottom: 12px; text-align:left; max-width:600px;">
+        <div style="margin-bottom: 12px; text-align:left; max-width:600px; margin-inline:auto;">
           <div style="font-size:0.85rem; color:#9ca3af;">
             <strong>${row.username}</strong> – ${row.created_at}
           </div>
@@ -506,21 +628,27 @@ app.get("/comments-vuln", requireLogin, async (req, res) => {
       )
       .join("");
 
-    let hintBlock = "";
-    if (req.session.level3Attempts >= 5) {
-      hintBlock = `
-        <p style="margin-top:12px; color:#eab308; font-size:0.9rem;">
-          💡 Indice :
-          <code>&lt;script&gt;alert(document.getElementById('secret-flag').dataset.flag)&lt;/script&gt;</code>
-        </p>
-      `;
-    }
+    // 🎯 Comme Level 2 : flag affiché SI on détecte <script dans le dernier commentaire
+    const flagBlock = containsScript
+      ? `
+        <div class="flag-box" style="margin-top:20px; max-width:600px; width:100%; margin-inline:auto;">
+          <h2 style="margin-top:0; color:#22c55e;">🏴 Flag Level 3</h2>
+          <p style="font-family:monospace; font-size:0.95rem; word-break:break-all;">
+            <strong>${LEVEL3_FLAG}</strong>
+          </p>
+          <p style="font-size:0.85rem; color:#9ca3af; margin-top:4px;">
+            Tu peux maintenant copier ce flag et le valider sur la page <strong>Game</strong> 🎯
+          </p>
+        </div>
+      `
+      : "";
 
     res.send(`
       <!DOCTYPE html>
       <html lang="fr">
         <head>
           <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Level 3 – XSS stocké</title>
           <link rel="stylesheet" href="/style.css" />
         </head>
@@ -530,34 +658,33 @@ app.get("/comments-vuln", requireLogin, async (req, res) => {
           <div class="matrix-content">
             <h1>Level 3 – XSS (Stocké)</h1>
             <p class="subtitle">
-              Objectif : injecter du <strong>JavaScript</strong> dans un commentaire,
-              pour qu'il soit exécuté à chaque affichage de la page 😈
+              Objectif : réussir à faire en sorte qu'un <strong>script</strong> soit stocké
+              dans un commentaire… et voit ce que le serveur te révèle 😈
             </p>
 
             <!-- Formulaire de commentaire -->
-            <form method="POST" action="/comments-vuln" class="login-form" style="flex-direction:column; max-width:600px;">
+            <form method="POST" action="/comments-vuln"
+                  class="login-form"
+                  style="flex-direction:column; max-width:600px; width:100%; margin-inline:auto;">
               <textarea
                 name="content"
                 rows="3"
                 placeholder="Écris un commentaire... (ou un payload XSS 👀)"
-                style="width:100%; padding:8px 12px; border-radius:12px; border:1px solid #4b5563; background:#020617; color:#e5e7eb;"
+                class="comment-textarea"
                 required
               ></textarea>
-              <button type="submit" class="btn btn-secondary" style="align-self:flex-start; margin-top:8px;">
+              <button type="submit" class="btn btn-secondary" style="margin-top:8px;">
                 💬 Publier
               </button>
             </form>
 
-            <!-- Flag caché dans le DOM -->
-            <div
-              id="secret-flag"
-              data-flag="${LEVEL3_FLAG}"
-              style="display:none;"
-            ></div>
+            <!-- Bloc flag (comme Level 2 : affiché SI <script détecté) -->
+            ${flagBlock}
 
-            <h2 style="margin-top:24px;">Commentaires</h2>
+            <h2 style="margin-top:24px;">Dernier commentaire</h2>
             ${hintBlock}
-            <div style="max-height:300px; overflow-y:auto; width:100%; max-width:600px;">
+
+            <div style="max-height:300px; overflow-y:auto; width:100%; max-width:600px; margin-inline:auto; margin-top:8px;">
               ${commentsHtml || "<p>Aucun commentaire pour l’instant.</p>"}
             </div>
 
@@ -649,7 +776,6 @@ app.post("/comments-vuln", requireLogin, async (req, res) => {
 
     // Retour à la page vulnérable
     res.redirect("/comments-vuln");
-
   } catch (err) {
     console.error("Erreur /comments-vuln POST :", err);
     res.status(500).send("Erreur lors de l'ajout du commentaire");
@@ -726,10 +852,9 @@ app.get("/level4", requireLogin, (req, res) => {
 });
 
 // Faux panneau admin vulnérable
-app.get("/admin-panel", requireLogin, (req, res) => {
+app.get("/admin-panel", requireLogin, async (req, res) => {
   const username = req.session.username;
 
-  // Init du compteur si nécessaire
   if (!req.session.level4Attempts) {
     req.session.level4Attempts = 0;
   }
@@ -737,47 +862,98 @@ app.get("/admin-panel", requireLogin, (req, res) => {
   // Version censée : admin uniquement
   const isAdminSession = username === "admin";
 
-  // Bypass debug vulnérable
+  // Faille : contournement via ?asAdmin=1
   const isAdminDebug = req.query.asAdmin === "1";
 
-  // Cas : accès refusé
-  if (!isAdminSession && !isAdminDebug) {
+  // Détection d'exploitation
+  const exploited = isAdminSession || isAdminDebug;
 
-    // INCRÉMENTATION DES ESSAIS
-    req.session.level4Attempts++;
-
-    // Construction de l'indice
-    let hint = "";
-    if (req.session.level4Attempts >= 5) {
-      hint = `
-        <p style="color:#eab308; margin-top:12px;">
-          💡 Indice : admin-panel?asAdmin=1 ?
-        </p>
-      `;
-    }
-
-    return res.send(`
-      <h1>Zone Admin</h1>
-      <p>Tu n'es pas admin. Accès refusé.</p>
-      <p>Essais : ${req.session.level4Attempts}</p>
-      ${hint}
-      <p><a href="/level4">⬅️ Retour au brief</a></p>
-      <p><a href="/game">🏠 Retour au jeu</a></p>
-    `);
+  // Compteur essais seulement si pas exploité
+  if (!exploited) {
+    req.session.level4Attempts += 1;
   }
 
-  // Cas : admin (vrai ou via bypass)
-  req.session.level4Attempts = 0; // reset
-  return res.send(`
-    <h1>Zone Admin – Accès accordé</h1>
-    <p>Bienvenue dans le faux panneau d'administration 😈</p>
-    <p>Voici ton flag du Level 4 :</p>
-    <p><strong>${LEVEL4_FLAG}</strong></p>
+  // Indice
+  let hintBlock = "";
+  if (!exploited && req.session.level4Attempts >= 3) {
+    hintBlock = `
+      <p style="color:#eab308; margin-top:12px;">
+        💡 Indice : essaye avec <code>?asAdmin=1</code>
+      </p>
+    `;
+  }
 
-    <p style="margin-top: 20px;">
-      <a href="/level4" class="btn btn-secondary">⬅️ Retour au brief</a>
-      <a href="/game" class="btn btn-secondary">🏠 Retour au jeu</a>
-    </p>
+  // 🎯 FLAG affiché si la faille est exploitée
+  const flagBlock = exploited
+    ? `
+      <div class="flag-box" style="max-width:600px; margin-top:20px;">
+        <h2 style="margin-top:0;">🏴 Flag Level 4</h2>
+        <p><strong>${LEVEL4_FLAG}</strong></p>
+        <p style="font-size:0.85rem; color:#9ca3af;">
+          Copie ce flag et colle-le dans la page Game pour valider ce niveau.
+        </p>
+      </div>
+    `
+    : "";
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="fr">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Zone Admin</title>
+        <link rel="stylesheet" href="/style.css" />
+      </head>
+
+      <body class="matrix-body">
+        <canvas id="matrix-canvas"></canvas>
+
+        <div class="matrix-content">
+          <h1>Zone Admin</h1>
+
+          ${
+            exploited
+              ? `<p>Accès accordé 😈</p>`
+              : `<p>Tu n'es pas admin. Accès refusé.</p>`
+          }
+
+          ${flagBlock}
+          ${hintBlock}
+
+          <p style="margin-top:20px;">
+            <a href="/level4" class="btn btn-secondary">⬅️ Retour au brief</a>
+            <a href="/game" class="btn btn-secondary">🏠 Retour au jeu</a>
+          </p>
+        </div>
+
+        <script>
+          const canvas=document.getElementById("matrix-canvas");
+          const ctx=canvas.getContext("2d");
+          function resizeCanvas(){canvas.width=innerWidth;canvas.height=innerHeight;}
+          resizeCanvas();
+          const letters="01あいうえおアイウエオデータハック$#@!?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          const fontSize=16;
+          let columns=Math.floor(canvas.width/fontSize);
+          let drops=Array(columns).fill(0);
+          function draw(){
+            ctx.fillStyle="rgba(0,0,0,0.15)";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle="#00cc33";
+            ctx.font=fontSize+"px monospace";
+            for(let i=0;i<drops.length;i++){
+              const text=letters[Math.floor(Math.random()*letters.length)];
+              ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+              if(drops[i]*fontSize>canvas.height&&Math.random()>0.975)drops[i]=0;
+              drops[i]++;
+            }
+          }
+          setInterval(draw,75);
+          onresize=()=>{resizeCanvas();columns=Math.floor(canvas.width/fontSize);drops=Array(columns).fill(0);}
+        </script>
+
+      </body>
+    </html>
   `);
 });
 
@@ -867,7 +1043,7 @@ app.get("/profile-vuln", requireLogin, async (req, res) => {
       req.session.level5Attempts++;
 
       let hint = "";
-      if (req.session.level5Attempts >= 5) {
+      if (req.session.level5Attempts >= 3) {
         hint = `
           <p style="color:#eab308;">
             💡 Indice : joue avec le paramètre <code>id</code> dans l'URL.
@@ -917,6 +1093,7 @@ app.get("/profile-vuln", requireLogin, async (req, res) => {
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Level 5 – IDOR</title>
         <link rel="stylesheet" href="/style.css" />
       </head>
@@ -1109,6 +1286,11 @@ app.get("/register-safe", (req, res) => {
 app.post("/register-safe", async (req, res) => {
   const { username, password } = req.body;
 
+  // Vérification de la longueur du nom d'utilisateur (max 20 caractères)
+  if (username && username.length > 20) {
+    return res.redirect("/register-safe?error=usernameTooLong");
+  }
+
   // Vérification de force du mot de passe
   const passwordRegex =
     /^(?=.*[A-Z])(?=.*[!@#$%^&*()_\-+=<>?{}\[\]~]).{8,}$/;
@@ -1154,8 +1336,6 @@ app.post("/register-safe", async (req, res) => {
     return res.redirect("/register-safe?error=server");
   }
 });
-
-
 
 // ============================================================================
 // LOGOUT

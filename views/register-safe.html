@@ -20,6 +20,7 @@
           type="text"
           name="username"
           placeholder="Nom d'utilisateur"
+          maxlength="20"
           required
         />
         <input
@@ -41,7 +42,10 @@
       const errorEl = document.getElementById("register-error");
 
       if (error && errorEl) {
-        if (error === "weak") {
+        if (error === "usernameTooLong") {
+          errorEl.textContent =
+            "❌ Le nom d'utilisateur ne peut pas dépasser 20 caractères.";
+        } else if (error === "weak") {
           errorEl.textContent =
             "❌ Mot de passe trop faible : 8 caractères, 1 majuscule, 1 caractère spécial minimum.";
         } else if (error === "exists") {

@@ -8,6 +8,7 @@ body {
   color: #e5e7eb;
 }
 
+/* Conteneur principal de la page /game */
 .game-container {
   max-width: 900px;
   margin: 40px auto;
@@ -17,6 +18,7 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
+/* Bloc login (login safe dans /game) */
 .login-box {
   background: rgba(15, 23, 42, 0.9);
   border-radius: 12px;
@@ -51,6 +53,7 @@ h1 {
   margin-bottom: 24px;
 }
 
+/* Cartes des niveaux */
 .levels {
   display: grid;
   grid-template-columns: 1fr;
@@ -74,6 +77,7 @@ h1 {
   color: #d1d5db;
 }
 
+/* Boutons génériques */
 .btn {
   display: inline-block;
   padding: 8px 14px;
@@ -91,6 +95,17 @@ h1 {
   filter: brightness(1.1);
 }
 
+.btn.btn-secondary {
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #4b5563;
+}
+
+.btn.btn-secondary:hover {
+  filter: brightness(1.1);
+}
+
+/* Actions d’un niveau (boutons + formulaire flag) */
 .level-actions {
   display: flex;
   flex-wrap: wrap;
@@ -98,6 +113,7 @@ h1 {
   align-items: center;
 }
 
+/* Formulaire de flag dans /game */
 .flag-form {
   display: flex;
   gap: 6px;
@@ -120,16 +136,7 @@ h1 {
   color: #e5e7eb;
 }
 
-.btn.btn-secondary {
-  background: #0f172a;
-  color: #e5e7eb;
-  border: 1px solid #4b5563;
-}
-
-.btn.btn-secondary:hover {
-  filter: brightness(1.1);
-}
-
+/* Score + messages */
 .score {
   text-align: center;
   font-weight: 600;
@@ -161,7 +168,25 @@ h1 {
   font-size: 0.9rem;
 }
 
-/* === PAGE LOGIN MATRIX (LEVEL 1) === */
+.hint {
+  text-align: center;
+  margin-top: 12px;
+  color: #9ca3af;
+}
+
+.hint a {
+  color: #22c55e;
+  font-weight: 600;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.hint a:hover {
+  color: #16a34a;
+  text-decoration: none;
+}
+
+/* === PAGE LOGIN / MATRIX (LEVEL 1, 2, 3, 5 etc.) === */
 
 /* Canvas du fond Matrix */
 #matrix-canvas {
@@ -172,12 +197,13 @@ h1 {
   pointer-events: none;
 }
 
-/* Body spécifique à la page login */
+/* Body spécifique aux pages Matrix */
 .matrix-body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;   /* on bloque l'horizontal */
+  overflow-y: auto;     /* ✅ on autorise le scroll vertical (mobile) */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   color: #e5e7eb;
@@ -199,7 +225,7 @@ h1 {
   padding: 24px;
 }
 
-/* Formulaire centré */
+/* Formulaire centré dans les pages Matrix */
 .matrix-content .login-form {
   display: flex;
   gap: 8px;
@@ -210,11 +236,12 @@ h1 {
 
 /* Inputs version Matrix */
 .matrix-content input {
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid #22c55e55;
   background: rgba(0, 0, 0, 0.7);
   color: #e5e7eb;
+  font-size: 1rem;
 }
 
 .matrix-content input::placeholder {
@@ -230,29 +257,95 @@ h1 {
   margin-top: 12px;
 }
 
-/* Bouton sur la page Matrix uniquement */
+/* Bouton sur les pages Matrix */
 .matrix-content .btn.btn-secondary {
   background: transparent;
   border: 1px solid #22c55e;
   color: #bbf7d0;
 }
 
+/* === LEVEL 2 – SEARCH (spécifique) === */
+
+/* Si tu mets class="search-form" sur le form de /search-vuln */
+.search-form {
+  width: 100%;
+  max-width: 500px;
+  margin: 12px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-form input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  border: 1px solid #22c55e;
+  background: rgba(0, 0, 0, 0.75);
+  color: #e5e7eb;
+}
+
+.search-form button {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1.05rem;
+}
+
+/* Si jamais tu laisses class="login-form" sur /search-vuln,
+   ça agrandit quand même les inputs dans matrix-content */
+.matrix-content .login-form input[type="text"] {
+  min-width: min(100%, 320px);
+  padding: 12px 14px;
+  font-size: 1.05rem;
+}
+
+/* Textarea du Level 3 (commentaires) */
+.comment-textarea {
+  width: 100%;
+  max-width: 500px;
+  box-sizing: border-box;   /* ✅ évite de dépasser à droite */
+  margin: 0 auto;           /* centre dans la colonne */
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  resize: vertical;
+}
+
+/* === BLOC FLAG GÉNÉRIQUE (optionnel) === */
+
+.flag-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid #22c55e;
+  border-radius: 12px;
+  font-family: monospace;
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
 /* === RESPONSIVE MOBILE (≤ 480px) === */
 @media (max-width: 480px) {
-  .game-container {
-    margin: 16px auto;
-    padding: 16px;
-    border-radius: 12px;
-  }
 
+  /* GENERAL */
   h1 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     margin-bottom: 6px;
   }
 
   .subtitle {
-    font-size: 0.9rem;
+    font-size: 1rem;
     margin-bottom: 16px;
+  }
+
+  /* === GAME PAGE === */
+  .game-container {
+    margin: 16px auto;
+    padding: 16px;
+    border-radius: 12px;
   }
 
   .login-box {
@@ -262,149 +355,146 @@ h1 {
 
   .login-form {
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .login-form input {
     width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 12px;
+    font-size: 1.1rem;
   }
 
   .level-card {
-    padding: 12px 16px;
+    padding: 14px 16px;
   }
 
   .level-card h2 {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
 
   .level-card p {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
   }
 
   .btn {
-    padding: 10px 16px;
-    font-size: 0.9rem;
+    padding: 12px 16px;
+    font-size: 1.1rem;
     width: 100%;
-    text-align: center;
     box-sizing: border-box;
+  }
+
+  .btn.btn-secondary {
+    font-size: 1.1rem;
   }
 
   .level-actions {
     flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-  }
-
-  .level-actions > a,
-  .level-actions > form {
+    gap: 10px;
     width: 100%;
   }
 
   .flag-form {
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
   }
 
   .flag-input {
     width: 100%;
-    box-sizing: border-box;
-  }
-
-  .flag-form button {
-    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
   }
 
   .flag-result {
     margin-left: 0;
-    margin-top: 4px;
+    margin-top: 6px;
     text-align: center;
     display: block;
   }
 
-  .score {
-    font-size: 0.95rem;
-    margin-bottom: 12px;
+  /* === MATRIX PAGES (login, level2, level3…) === */
+
+  .matrix-body {
+    overflow-y: auto;  /* autorise le scroll */
   }
 
-  .reset-form {
-    margin-bottom: 12px;
-  }
-
-  .reset-form .btn {
-    width: auto;
-    display: inline-block;
-  }
-
-  /* Matrix page responsive */
   .matrix-content {
-    padding: 16px;
-    gap: 10px;
+    padding: 24px;
+    gap: 14px;
+    min-height: auto !important;
+    justify-content: flex-start !important; /* 🔥 fix : ne plus centrer verticalement */
+    padding-top: 40px !important; /* espace en haut comme sur mobile */
   }
 
   .matrix-content h1 {
-    font-size: 1.5rem;
+    font-size: 1.7rem;
   }
 
   .matrix-content h2 {
-    font-size: 1.1rem;
-  }
-
-  .matrix-content .login-form {
-    flex-direction: column;
-    width: 100%;
-    max-width: 100%;
+    font-size: 1.2rem;
   }
 
   .matrix-content input {
     width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 12px 14px;
+    font-size: 1.2rem;
   }
 
   .matrix-content .btn {
     width: 100%;
+    font-size: 1.2rem;
+    padding: 12px;
+  }
+
+  /* === LEVEL 2 – SEARCH PAGE SPECIFIC FIX === */
+
+  /* Conteneur du formulaire : centré, avec marge latérale */
+  .search-form,
+  .matrix-content .login-form {
+    width: 100%;
+    max-width: 90%;
+    margin: 12px auto 0;
+    gap: 12px;
+  }
+
+  /* Champ de recherche : prend toute la largeur du form */
+  .search-form input[type="text"],
+  .matrix-content .login-form input[type="text"] {
+    width: 100%;
     box-sizing: border-box;
+    padding: 14px 16px;
+    font-size: 1.3rem;
   }
 
-  /* Pages d'explication responsive */
-  .matrix-content[style*="max-width"] {
-    padding: 16px !important;
-    margin: 16px auto;
+  /* Bouton : large et centré */
+  .search-form button,
+  .matrix-content .login-form button {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.25rem;
   }
 
+  .comment-textarea {
+    max-width: 100%;
+    font-size: 1.05rem;
+  }
+
+  
+
+  /* === EXPLANATION PAGES === */
   .matrix-content pre {
-    font-size: 0.85rem !important;
-    padding: 10px !important;
+    font-size: 0.9rem !important;
+    padding: 10px;
     overflow-x: auto;
-    word-wrap: break-word;
-  }
-
-  .matrix-content ul,
-  .matrix-content ol {
-    padding-left: 20px;
-  }
-
-  .matrix-content li {
-    margin-bottom: 8px;
-  }
-
-  .matrix-content h2 {
-    font-size: 1.1rem;
-    margin-top: 16px;
-    margin-bottom: 8px;
   }
 
   .matrix-content p {
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 1rem;
+    line-height: 1.6;
   }
 
   .matrix-content code {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     padding: 2px 6px;
-    border-radius: 4px;
   }
 }
