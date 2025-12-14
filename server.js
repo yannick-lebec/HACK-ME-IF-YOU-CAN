@@ -36,7 +36,7 @@ const LEVEL4_FLAG = "FLAG{broken_access_control_pwned}";
 const LEVEL5_FLAG = "FLAG{idor_insecure_object_reference_pwned}";
 const TOTAL_LEVELS = 5;
 
-// === CONNEXION BDD ===
+// === CONNEXION BDD (POOL) ===
 
 let db;
 
@@ -63,16 +63,22 @@ async function initDb() {
         process.env.MYSQLDATABASE ||
         process.env.MYSQL_DATABASE ||
         "hackme",
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
     };
 
-    db = await mysql.createConnection(connectionConfig);
+    // 🔥 On crée un POOL au lieu d'une seule connexion
+    db = mysql.createPool(connectionConfig);
+
+    // On teste une requête simple
+    await db.query("SELECT 1");
     console.log(
-      "✅ Connecté à MySQL sur",
+      "✅ Pool MySQL initialisé sur",
       connectionConfig.host + ":" + connectionConfig.port
     );
 
     // --- Création automatique des tables si elles n'existent pas ---
-
     await db.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -103,7 +109,10 @@ async function initDb() {
 
     console.log("✅ Tables MySQL initialisées (users, comments, user_progress)");
   } catch (err) {
-    console.error("❌ Impossible de se connecter à MySQL ou de créer les tables :", err.message);
+    console.error(
+      "❌ Impossible d'initialiser MySQL (connexion ou création de tables) :",
+      err.message
+    );
     console.error(
       "❌ Le jeu démarre quand même, mais tout ce qui touche à la base ne marchera pas."
     );
