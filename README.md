@@ -1,203 +1,179 @@
 # 🔐 Hack Me If You Can – Web Security Challenge
 
-Bienvenue dans **Hack Me If You Can**, une application volontairement vulnérable conçue pour apprendre à exploiter les failles Web les plus courantes :
+Bienvenue dans Hack Me If You Can, une application volontairement vulnérable conçue pour apprendre à exploiter les failles Web les plus courantes :
 
-- SQL Injection
-- XSS Reflected
-- XSS Stored
-- Broken Access Control (BAC)
-- Suivi de progression et niveau final
+SQL Injection
 
-Chaque niveau contient un objectif et un **flag** à récupérer.
+XSS Reflected
 
----
+XSS Stored
 
-## 🚀 Installation
+Broken Access Control (BAC)
 
-### 1. Cloner le projet
+IDOR (Insecure Direct Object Reference)
 
-```bash
+Suivi de progression et scoreboard
+
+Chaque niveau contient un objectif et un flag à récupérer.
+
+## 🚀 Installation (Local)
+### 1️⃣ Cloner le projet
 git clone https://github.com/votre_user/hack-me-if-you-can.git
 cd hack-me-if-you-can
-```
-
-### 2. Installer les dépendances
-
-```bash
+### 2️⃣ Installer les dépendances
 npm install
-```
+### 3️⃣ Configurer PostgreSQL (Neon recommandé)
 
-### 3. Configurer MySQL
+Créer une base PostgreSQL (ex: via Neon).
 
-Créer la base :
+Créer un fichier .env à la racine :
 
-```sql
-CREATE DATABASE hackme;
-USE hackme;
-```
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+SESSION_SECRET=une_longue_chaine_random
 
-Importer le fichier SQL :
+⚠️ Ne pas commit .env.
 
-```bash
-mysql -u root -p hackme < database.sql
-```
+### 4️⃣ Créer les tables
 
-### 4. Lancer le serveur
+Exécuter ce script SQL dans PostgreSQL :
 
-```bash
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_progress (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    level_number INTEGER NOT NULL,
+    UNIQUE(user_id, level_number),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+### 5️⃣ Lancer le serveur
 node server.js
-```
 
 Accéder à l’application :
 
 👉 http://localhost:4100
 
----
+☁️ Déploiement sur Vercel
 
-## 📁 Structure du projet
+Importer le repo sur Vercel
 
-```
+Ajouter les variables d’environnement :
+
+DATABASE_URL
+SESSION_SECRET
+
+Redeploy
+
+📁 Structure du projet
 hack-me-if-you-can/
  ├── server.js              # Serveur Node.js / Express
- ├── public/                # Fichiers front (CSS, images, JS)
+ ├── public/                # CSS, images, assets
  ├── views/                 # Pages HTML et niveaux
  │    ├── game.html
+ │    ├── level1.html
+ │    ├── level2.html
+ │    ├── level3.html
+ │    ├── level4.html
+ │    ├── level5.html
  │    ├── login.html
+ │    ├── register-safe.html
  │    ├── explain-level1.html
  │    ├── explain-level2.html
  │    ├── explain-level3.html
  │    ├── explain-level4.html
  │    └── explain-level5.html
- ├── database.sql           # Structure et données
  ├── package.json
  └── README.md
-```
-
----
-
 ## 🧩 Niveaux & Objectifs
-
 ### 🧨 Level 1 – SQL Injection
 
-Objectif : contourner le login sans connaître le mot de passe.
+Objectif : contourner le login vulnérable.
 
-Payload exemple :
+Exemple de payload :
 
-```
 ' OR 1=1 --
-```
 
-Flag : `FLAG{sql_injection_basic_pwned}`
+Flag :
 
----
-
+FLAG{sql_injection_basic_pwned}
 ### ✨ Level 2 – XSS Reflected
 
 Objectif : injecter du JavaScript via un paramètre d’URL.
 
 Exemple :
 
-```html
 <script>alert(1)</script>
-```
 
-Flag : `FLAG{xss_reflected_pwned}`
+Flag :
 
----
-
+FLAG{xss_reflected_pwned}
 ### 💣 Level 3 – XSS Stored
 
-Objectif : poster un commentaire contenant du JavaScript qui s’exécute au rechargement.
+Objectif : injecter un script via un commentaire stocké en base.
 
-Flag : `FLAG{xss_stored_pwned}`
+Flag :
 
----
-
+FLAG{xss_stored_pwned}
 ### 🔓 Level 4 – Broken Access Control
 
-Objectif : accéder à des pages ou actions réservées sans autorisation.
+Objectif : accéder à une zone admin sans privilège.
 
-Flag : `FLAG{broken_access_control_pwned}`
+Flag :
 
----
+FLAG{broken_access_control_pwned}
+### 🕵️ Level 5 – IDOR
 
-### 🏁 Level 5 – Progression & niveau final
+Objectif : accéder au profil d’un autre utilisateur via manipulation d’ID.
 
-Objectif : valider l’ensemble des niveaux précédents et déclencher le flag final une fois la progression complétée.
+Flag :
 
-Ce niveau s’appuie sur la table `user_progress` pour suivre quels niveaux ont été réussis par chaque utilisateur, et peut afficher par exemple :
-- les niveaux terminés
-- les flags trouvés
-- un écran de fin / scoreboard
-
-(Le comportement exact dépend de l’implémentation dans `server.js` et `views/game.html`.)
-
----
+FLAG{idor_insecure_object_reference_pwned}
 
 ## 🗄️ Base de données
+Table users
+colonne	type
+id	SERIAL PK
+username	VARCHAR
+password	VARCHAR
+Table comments
+colonne	type
+id	SERIAL
+user_id	INT FK
+content	TEXT
+created_at	TIMESTAMP
+Table user_progress
+colonne	type
+id	SERIAL
+user_id	INT FK
+level_number	INT
+🛡️ Notes pédagogiques
 
-La base contient au minimum les tables suivantes :
+# ⚠️ Ce projet est volontairement vulnérable.
 
-### Table `users`
-
-Représente les comptes utilisés pour se connecter à l’application.
-
-Colonnes typiques :
-
-| colonne   | type        | description                  |
-|----------|-------------|------------------------------|
-| id       | INT PK      | Identifiant utilisateur      |
-| username | VARCHAR     | Nom d’utilisateur            |
-| password | VARCHAR     | Mot de passe (en clair ici)  |
-
----
-
-### Table `comments`
-
-Utilisée pour les niveaux de XSS stockée (Level 3).
-
-| colonne | type    | description                       |
-|---------|---------|-----------------------------------|
-| id      | INT PK  | Identifiant du commentaire        |
-| user_id | INT FK  | Référence vers `users.id`         |
-| content | TEXT    | Contenu du commentaire (injecté)  |
-
----
-
-### Table `user_progress`
-
-Suivi de la progression des utilisateurs sur les différents niveaux.
-
-Colonnes typiques :
-
-| colonne     | type    | description                                      |
-|------------|---------|--------------------------------------------------|
-| id         | INT PK  | Identifiant de la ligne de progression           |
-| user_id    | INT FK  | Référence vers `users.id`                        |
-| level      | INT     | Numéro du niveau (1 à 5)                         |
-| completed  | TINYINT | 0 ou 1 : niveau terminé ou non                   |
-| updated_at | DATETIME| Dernière mise à jour de la progression           |
-
-Cette table permet :
-- d’enregistrer quels niveaux ont été validés
-- de débloquer le niveau 5 ou l’écran final
-- de construire un tableau de bord de progression.
-
----
-
-## 🛡️ Notes pédagogiques
-
-⚠️ Ce projet est **volontairement vulnérable**.  
 Ne jamais l’utiliser en production.
 
-Idéal pour :
-- apprentissage des failles OWASP
-- ateliers sécurité
-- challenges CTF internes
-- formation développeurs
+Objectif pédagogique :
 
----
+comprendre les failles OWASP
+
+apprendre les mauvaises pratiques
+
+s’entraîner aux CTF
+
+sensibiliser les développeurs
 
 ## 👨‍💻 Auteur
 
-Projet créé pour s’entraîner aux attaques Web et comprendre les mauvaises pratiques.
+Projet créé pour l’apprentissage de la sécurité Web offensive.
