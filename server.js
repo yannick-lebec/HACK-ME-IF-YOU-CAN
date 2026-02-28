@@ -1,9 +1,9 @@
-const { Pool } = require("pg");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
 const fs = require("fs");
 const path = require("path");
+const { Pool } = require("pg");
 
 console.log(">>> SERVER.JS HACK-ME (POSTGRES/NEON) LANCÉ <<<");
 
@@ -38,21 +38,21 @@ const TOTAL_LEVELS = 5;
 
 // === CONNEXION BDD (POOL POSTGRES) ===
 let db = null;
-global.__dbInitPromise = global.__dbInitPromise || null;
+let dbInitPromise = null;
 
 async function initDb() {
   if (db) return db;
 
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL manquant (Vercel env var)");
+    throw new Error("DATABASE_URL manquant");
   }
 
-  // Pool global pour éviter de le recréer à chaque cold start
+  // Pool global (important sur Vercel)
   if (!global.__pgPool) {
-    global.__pgPool = new (require("pg").Pool)({
+    global.__pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      max: 5,
+      max: 3,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
@@ -60,34 +60,34 @@ async function initDb() {
 
   db = global.__pgPool;
 
-  // ping (Neon peut être en pause, ça peut time-out)
+  // Ping
   await db.query("SELECT 1");
   console.log("✅ PostgreSQL connecté (Neon)");
 
-  // tables (tu peux les laisser ici)
+  // Tables (idempotent)
   await db.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
-      username VARCHAR(100) NOT NULL UNIQUE,
+      username VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL
     );
   `);
+
   await db.query(`
     CREATE TABLE IF NOT EXISTS comments (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       content TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_progress (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       level_number INTEGER NOT NULL,
-      UNIQUE (user_id, level_number),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      UNIQUE(user_id, level_number)
     );
   `);
 
@@ -96,33 +96,24 @@ async function initDb() {
 
 async function requireDb(req, res, next) {
   try {
-    // Evite plusieurs initDb en parallèle
     if (!db) {
-      if (!global.__dbInitPromise) {
-        global.__dbInitPromise = initDb().finally(() => {
-          global.__dbInitPromise = null;
+      if (!dbInitPromise) {
+        dbInitPromise = initDb().finally(() => {
+          dbInitPromise = null;
         });
       }
-      await global.__dbInitPromise;
-    } else {
-      // petit ping optionnel pour gérer Neon endormi
-      await db.query("SELECT 1");
+      await dbInitPromise;
     }
-    next();
+    return next();
   } catch (e) {
-    console.error("❌ DB indispo:", e.message);
-    // IMPORTANT: on NE met PAS db = null ici, sinon tu te bloques
-    return res.status(503).send("Base de données indisponible (Neon en pause). Réessaie dans 2-3 sec.");
+    console.error("❌ Erreur PostgreSQL :", e.message);
+    return res
+      .status(503)
+      .send("Base de données indisponible (Neon en pause ?). Réessaie.");
   }
 }
-initDb();
 
-// === MIDDLEWARES ===
-function requireDb(req, res, next) {
-  if (!db) return res.status(503).send("Base de données indisponible (Neon en pause ?). Réessaie.");
-  next();
-}
-
+// === MIDDLEWARE LOGIN ===
 function requireLogin(req, res, next) {
   if (!req.session.userId) return res.redirect("/game");
   next();
@@ -152,6 +143,16 @@ app.get("/game", (req, res) => {
   res.sendFile(path.join(__dirname, "views/game.html"));
 });
 
+// Route debug santé DB
+app.get("/health/db", async (req, res) => {
+  try {
+    await initDb();
+    res.send("DB OK");
+  } catch (e) {
+    res.status(500).send("DB FAIL: " + e.message);
+  }
+});
+
 // ============================================================================
 // LEVEL 1 – SQL Injection
 // ============================================================================
@@ -169,7 +170,9 @@ app.get("/login", requireDb, async (req, res) => {
   if (req.session.userId) {
     try {
       showFlag = await hasCompletedLevel(req.session.userId, 1);
-      console.log(`>>> User ${req.session.userId} - Level 1 complété: ${showFlag}`);
+      console.log(
+        `>>> User ${req.session.userId} - Level 1 complété: ${showFlag}`
+      );
     } catch (err) {
       console.error("Erreur lors de la vérification du level 1:", err);
     }
@@ -184,7 +187,6 @@ app.get("/login", requireDb, async (req, res) => {
         </p>
       </div>
     `;
-
     htmlContent = htmlContent.replace("</form>", "</form>" + flagSection);
   }
 
@@ -360,7 +362,7 @@ app.get("/search-vuln", (req, res) => {
     <html lang="fr">
       <head>
         <meta charset="UTF-8" />
-         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Recherche vulnérable – Level 2</title>
         <link rel="stylesheet" href="/style.css" />
       </head>
@@ -375,12 +377,7 @@ app.get("/search-vuln", (req, res) => {
           </p>
 
           <form class="search-form" method="GET" action="/search-vuln">
-            <input
-              type="text"
-              name="q"
-              placeholder="Tape ta recherche..."
-              value="${q}"
-            />
+            <input type="text" name="q" placeholder="Tape ta recherche..." value="${q}" />
             <button type="submit" class="btn btn-secondary">Rechercher</button>
           </form>
 
@@ -402,29 +399,29 @@ app.get("/search-vuln", (req, res) => {
         <script>
           const canvas = document.getElementById("matrix-canvas");
           const ctx = canvas.getContext("2d");
-          function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+          function resizeCanvas(){ canvas.width=innerWidth; canvas.height=innerHeight; }
           resizeCanvas();
-          const letters = "01あいうえおアイウエオネオデータハック$#@!%&<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-          const fontSize = 16;
-          let columns = Math.floor(canvas.width / fontSize);
-          let drops = Array(columns).fill(0);
-          function draw() {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#00cc33";
-            ctx.font = fontSize + "px monospace";
-            for (let i = 0; i < drops.length; i++) {
-              const text = letters[Math.floor(Math.random() * letters.length)];
-              ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-              if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+          const letters="01あいうえおアイウエオネオデータハック$#@!%&<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          const fontSize=16;
+          let columns=Math.floor(canvas.width/fontSize);
+          let drops=Array(columns).fill(0);
+          function draw(){
+            ctx.fillStyle="rgba(0,0,0,0.15)";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle="#00cc33";
+            ctx.font=fontSize+"px monospace";
+            for(let i=0;i<drops.length;i++){
+              const text=letters[Math.floor(Math.random()*letters.length)];
+              ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+              if(drops[i]*fontSize>canvas.height && Math.random()>0.975) drops[i]=0;
               drops[i]++;
             }
           }
-          setInterval(draw, 75);
-          addEventListener("resize", () => {
+          setInterval(draw,75);
+          addEventListener("resize", ()=>{
             resizeCanvas();
-            columns = Math.floor(canvas.width / fontSize);
-            drops = Array(columns).fill(0);
+            columns=Math.floor(canvas.width/fontSize);
+            drops=Array(columns).fill(0);
           });
         </script>
       </body>
@@ -434,7 +431,8 @@ app.get("/search-vuln", (req, res) => {
 
 app.post("/check-flag-level2", requireLogin, requireDb, async (req, res) => {
   const { flag } = req.body;
-  if (flag !== LEVEL2_FLAG) return res.json({ success: false, message: "Mauvais flag", level: 2 });
+  if (flag !== LEVEL2_FLAG)
+    return res.json({ success: false, message: "Mauvais flag", level: 2 });
 
   try {
     await db.query(
@@ -642,7 +640,8 @@ app.post("/comments-vuln", requireLogin, requireDb, async (req, res) => {
 
 app.post("/check-flag-level3", requireLogin, requireDb, async (req, res) => {
   const { flag } = req.body;
-  if (flag !== LEVEL3_FLAG) return res.json({ success: false, message: "Mauvais flag", level: 3 });
+  if (flag !== LEVEL3_FLAG)
+    return res.json({ success: false, message: "Mauvais flag", level: 3 });
 
   try {
     await db.query(
@@ -772,7 +771,8 @@ app.get("/admin-panel", requireLogin, (req, res) => {
 
 app.post("/check-flag-level4", requireLogin, requireDb, async (req, res) => {
   const { flag } = req.body;
-  if (flag !== LEVEL4_FLAG) return res.json({ success: false, message: "Mauvais flag", level: 4 });
+  if (flag !== LEVEL4_FLAG)
+    return res.json({ success: false, message: "Mauvais flag", level: 4 });
 
   try {
     await db.query(
@@ -818,7 +818,10 @@ app.get("/profile-vuln", requireLogin, requireDb, async (req, res) => {
   if (!req.session.level5Attempts) req.session.level5Attempts = 0;
 
   try {
-    const { rows } = await db.query("SELECT id, username FROM users WHERE id = $1", [requestedId]);
+    const { rows } = await db.query(
+      "SELECT id, username FROM users WHERE id = $1",
+      [requestedId]
+    );
 
     if (rows.length === 0) {
       req.session.level5Attempts++;
@@ -938,7 +941,8 @@ app.get("/profile-vuln", requireLogin, requireDb, async (req, res) => {
 
 app.post("/check-flag-level5", requireLogin, requireDb, async (req, res) => {
   const { flag } = req.body;
-  if (flag !== LEVEL5_FLAG) return res.json({ success: false, message: "Mauvais flag", level: 5 });
+  if (flag !== LEVEL5_FLAG)
+    return res.json({ success: false, message: "Mauvais flag", level: 5 });
 
   try {
     await db.query(
@@ -975,7 +979,9 @@ app.get("/explain/level5", requireLogin, requireDb, async (req, res) => {
 // ============================================================================
 app.post("/reset-game", requireLogin, requireDb, async (req, res) => {
   try {
-    await db.query("DELETE FROM user_progress WHERE user_id = $1", [req.session.userId]);
+    await db.query("DELETE FROM user_progress WHERE user_id = $1", [
+      req.session.userId,
+    ]);
     res.redirect("/game");
   } catch (err) {
     console.error("Erreur /reset-game :", err);
@@ -1043,14 +1049,19 @@ app.post("/register-safe", requireDb, async (req, res) => {
     return res.redirect("/register-safe?error=usernameTooLong");
   }
 
-  const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_\-+=<>?{}\[\]~]).{8,}$/;
+  const passwordRegex =
+    /^(?=.*[A-Z])(?=.*[!@#$%^&*()_\-+=<>?{}\[\]~]).{8,}$/;
   if (!passwordRegex.test(password)) {
     return res.redirect("/register-safe?error=weak");
   }
 
   try {
-    const existing = await db.query("SELECT id FROM users WHERE username = $1", [username]);
-    if (existing.rows.length > 0) return res.redirect("/register-safe?error=exists");
+    const existing = await db.query(
+      "SELECT id FROM users WHERE username = $1",
+      [username]
+    );
+    if (existing.rows.length > 0)
+      return res.redirect("/register-safe?error=exists");
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -1059,7 +1070,10 @@ app.post("/register-safe", requireDb, async (req, res) => {
       hashedPassword,
     ]);
 
-    const created = await db.query("SELECT id, username FROM users WHERE username = $1", [username]);
+    const created = await db.query(
+      "SELECT id, username FROM users WHERE username = $1",
+      [username]
+    );
     const user = created.rows[0];
 
     req.session.userId = user.id;
