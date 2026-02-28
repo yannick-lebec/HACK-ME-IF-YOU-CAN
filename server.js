@@ -38,66 +38,81 @@ const TOTAL_LEVELS = 5;
 
 // === CONNEXION BDD (POOL POSTGRES) ===
 let db = null;
+global.__dbInitPromise = global.__dbInitPromise || null;
 
 async function initDb() {
+  if (db) return db;
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL manquant (Vercel env var)");
+  }
+
+  // Pool global pour éviter de le recréer à chaque cold start
+  if (!global.__pgPool) {
+    global.__pgPool = new (require("pg").Pool)({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+
+  db = global.__pgPool;
+
+  // ping (Neon peut être en pause, ça peut time-out)
+  await db.query("SELECT 1");
+  console.log("✅ PostgreSQL connecté (Neon)");
+
+  // tables (tu peux les laisser ici)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_progress (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      level_number INTEGER NOT NULL,
+      UNIQUE (user_id, level_number),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  return db;
+}
+
+async function requireDb(req, res, next) {
   try {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL manquant");
+    // Evite plusieurs initDb en parallèle
+    if (!db) {
+      if (!global.__dbInitPromise) {
+        global.__dbInitPromise = initDb().finally(() => {
+          global.__dbInitPromise = null;
+        });
+      }
+      await global.__dbInitPromise;
+    } else {
+      // petit ping optionnel pour gérer Neon endormi
+      await db.query("SELECT 1");
     }
-
-    // Pool global (utile sur Vercel)
-    if (!global.__pgPool) {
-      global.__pgPool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-        max: 5,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
-      });
-    }
-    db = global.__pgPool;
-
-    await db.query("SELECT 1");
-    console.log("✅ PostgreSQL connecté (Neon)");
-
-    // --- Création automatique des tables si elles n'existent pas ---
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL
-      );
-    `);
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_comments_user
-          FOREIGN KEY (user_id) REFERENCES users(id)
-          ON DELETE CASCADE
-      );
-    `);
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS user_progress (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        level_number INTEGER NOT NULL,
-        CONSTRAINT uniq_user_level UNIQUE (user_id, level_number),
-        CONSTRAINT fk_progress_user
-          FOREIGN KEY (user_id) REFERENCES users(id)
-          ON DELETE CASCADE
-      );
-    `);
-
-    console.log("✅ Tables PostgreSQL initialisées (users, comments, user_progress)");
-  } catch (err) {
-    console.error("❌ Erreur PostgreSQL :", err.message);
-    console.error("❌ Le jeu démarre quand même, mais tout ce qui touche à la base ne marchera pas.");
-    db = null;
+    next();
+  } catch (e) {
+    console.error("❌ DB indispo:", e.message);
+    // IMPORTANT: on NE met PAS db = null ici, sinon tu te bloques
+    return res.status(503).send("Base de données indisponible (Neon en pause). Réessaie dans 2-3 sec.");
   }
 }
 initDb();
